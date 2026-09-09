@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>scalefind</title>
+  <style>
+    :root {
+      --bg: #f3f0ea;
+      --ink: #1c1a17;
+      --muted: #5c574f;
+      --accent: #c45c26;
+      --line: #d9d2c5;
+      --panel: rgba(255, 252, 246, 0.88);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% -10%, #ffe0c8 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 100% 0%, #d7e8df 0%, transparent 50%),
+        linear-gradient(180deg, #f7f3ec 0%, #ebe4d8 100%);
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.25rem 4rem;
+    }
+    .brand {
+      font-family: "IBM Plex Mono", "SF Mono", monospace;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      color: var(--accent);
+      margin: 0 0 0.75rem;
+    }
+    h1 {
+      font-family: "Fraunces", Georgia, serif;
+      font-weight: 600;
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      line-height: 1.15;
+      margin: 0 0 0.5rem;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin: 0 0 1.75rem;
+      max-width: 36rem;
+    }
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+    form {
+      display: grid;
+      gap: 0.85rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 1.25rem;
+      backdrop-filter: blur(6px);
+    }
+    label {
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+    }
+    input {
+      font: inherit;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+    button {
+      font: inherit;
+      font-weight: 600;
+      border: none;
+      background: var(--ink);
+      color: #fff;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      justify-self: start;
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .status {
+      min-height: 1.25rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 1rem 0 0.5rem;
+    }
+    .status.error { color: #9b2c2c; }
+    .results { display: grid; gap: 1rem; margin-top: 0.5rem; }
+    article {
+      border-top: 1px solid var(--line);
+      padding-top: 1rem;
+    }
+    article h2 {
+      font-size: 1.05rem;
+      margin: 0 0 0.35rem;
+      font-weight: 600;
+    }
+    article h2 a {
+      color: inherit;
+      text-decoration: none;
+    }
+    article h2 a:hover { color: var(--accent); }
+    .meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+    .excerpt {
+      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: #2d2a26;
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <main>
+    <p class="brand">scalefind</p>
+    <h1>Search Reddit</h1>
+    <p class="subtitle">Retrieve publicly accessible Reddit discussions from user-initiated queries.</p>
+    <div class="badge">Read-only Reddit research prototype</div>
+
+    <form id="search-form">
+      <label>
+        Query
+        <input id="query" name="q" type="search" required maxlength="300" placeholder="Enter a research query" />
+      </label>
+      <label>
+        Optional subreddit
+        <input id="subreddit" name="subreddit" type="text" maxlength="100" placeholder="example_subreddit_1" />
+      </label>
+      <button type="submit" id="submit">Search</button>
+    </form>
+
+    <p class="status" id="status" aria-live="polite"></p>
+    <div class="results" id="results"></div>
+  </main>
+
+  <script>
+    const form = document.getElementById("search-form");
+    const statusEl = document.getElementById("status");
+    const resultsEl = document.getElementById("results");
+    const submitBtn = document.getElementById("submit");
+
+    function formatDate(iso) {
+      if (!iso) return "unknown date";
+      try {
+        return new Date(iso).toLocaleString();
+      } catch {
+        return iso;
+      }
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const q = document.getElementById("query").value.trim();
+      const subreddit = document.getElementById("subreddit").value.trim();
+      resultsEl.innerHTML = "";
+      statusEl.textContent = "Searching…";
+      statusEl.classList.remove("error");
+      submitBtn.disabled = true;
+
+      const params = new URLSearchParams({ q, limit: "10" });
+      if (subreddit) params.set("subreddit", subreddit);
+
+      try {
+        const res = await fetch(`/reddit/search?${params.toString()}`);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Search failed");
+        }
+        const items = data.results || [];
+        statusEl.textContent = items.length
+          ? `${items.length} result${items.length === 1 ? "" : "s"}`
+          : "No results";
+        resultsEl.innerHTML = items.map((item) => `
+          <article>
+            <h2><a href="${item.permalink}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title || "(untitled)")}</a></h2>
+            <div class="meta">r/${escapeHtml(item.subreddit || "")} · ${formatDate(item.created_at)}</div>
+            <p class="excerpt">${escapeHtml(item.body || "")}</p>
+          </article>
+        `).join("");
+      } catch (err) {
+        statusEl.textContent = err.message || "Search failed";
+        statusEl.classList.add("error");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+  </script>
+</body>
+</html>
