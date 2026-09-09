@@ -2,6 +2,9 @@
 .env
 .env.local
 *.pem
+*.pub
+/github
+/github.pub
 
 # Python
 __pycache__/
