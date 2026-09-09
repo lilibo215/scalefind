@@ -1,21 +1,31 @@
 # Privacy Policy — scalefind
 
 **Effective date:** 2026-09-09  
-**Applies to:** the open-source `scalefind` prototype in this repository
+**Applies to:** the open-source `scalefind` prototype in this repository  
+**Public copy:** https://github.com/lilibo215/scalefind/blob/main/PRIVACY.md
 
 This policy describes how the **scalefind** application handles Reddit data and operator information when the software is run. It is written for Reddit API review and for anyone who operates a local instance.
 
 ## Summary
 
-scalefind is a **non-commercial**, **read-only**, **user-initiated** research prototype. It retrieves **publicly accessible** Reddit content only when an operator explicitly requests it. It does **not** build user profiles, does **not** sell data, and does **not** use Reddit content to train AI models.
+scalefind is a **non-commercial**, **read-only**, **user-initiated**, **localhost-only** research prototype. It retrieves **publicly accessible** Reddit content only when an operator explicitly requests it. It does **not** build user profiles, does **not** sell data, and does **not** use Reddit content to train AI models.
 
 ## Who this software is for
 
-The intended operator is a person running the prototype on their own machine (or a controlled server they administer) to evaluate official Reddit API connectivity for search and read of public discussions.
+The intended operator is a person running the prototype on **their own machine** (default bind `127.0.0.1`) to evaluate official Reddit API connectivity for search and read of public discussions. This submission does **not** describe a public multi-tenant hosted service.
+
+## Commercial use
+
+This prototype and privacy policy cover **non-commercial** evaluation only. Any future commercial product, paid offering, or commercialization of Reddit data would require:
+
+1. a **separate** Reddit API / commercial application and Reddit’s written approval, and  
+2. an updated privacy policy reflecting that different deployment and data practice.
+
+Those future practices are **out of scope** for this document and for the current API access request.
 
 ## Data we access from Reddit
 
-Only through the official Reddit API, after credentials are configured:
+Only through the official Reddit API, after credentials are configured, using **app-only (client credentials)** authentication:
 
 | Type | Examples of fields | Purpose |
 |------|--------------------|---------|
@@ -23,7 +33,8 @@ Only through the official Reddit API, after credentials are configured:
 | Subreddit about | name, title, public description, subscribers | Display community metadata |
 | Comments | id, body excerpt, post id, created time, permalink, score, depth | Display comment threads |
 
-We do **not** request write scopes or perform submit, vote, comment, message, or moderation actions.
+We do **not** request write scopes or perform submit, vote, comment, message, or moderation actions.  
+We do **not** rely on a user OAuth Redirect URI / authorization-code callback for this prototype’s stated purpose.
 
 ## Data we do not collect
 
@@ -38,7 +49,7 @@ Author usernames are not part of the minimized local research record schema.
 
 ## Local storage and retention
 
-- Optional short-lived cache in a **local SQLite** file (`STORAGE_PATH`, default `data/research.db`)
+- Optional short-lived cache in a **local SQLite** file (`STORAGE_PATH`, default `data/research.db`) on the operator’s machine
 - Default retention: **24 hours** (`DATA_RETENTION_HOURS`)
 - Cached rows expire and can be deleted:
   - `DELETE /reddit/data/{id}`
@@ -72,7 +83,9 @@ Anyone who runs this software must:
 - use an accurate descriptive `REDDIT_USER_AGENT`
 - respect Reddit Developer Terms, Responsible Builder Policy, rate limits, and applicable law
 - keep the subreddit allowlist explicit and limited to the stated use case
-- update this privacy policy if they deploy a modified or hosted version with different data practices
+- keep the default **localhost-only** posture unless they intentionally change bind settings and accept the corresponding responsibilities
+- update this privacy policy if they deploy a modified, commercial, or publicly hosted version with different data practices
+- obtain **separate** Reddit approval before any commercial use
 
 ## Changes
 
@@ -80,5 +93,5 @@ Material changes to this policy will be reflected by updating this file in the p
 
 ## Contact
 
-- Prefer the public GitHub repository **Issues** for this project after it is published
+- Prefer the public GitHub repository **Issues**: https://github.com/lilibo215/scalefind/issues  
 - Or the contact email supplied in the Reddit Developer Support application for this app

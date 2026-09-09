@@ -2,15 +2,24 @@
 
 This document is the primary package for Reddit Developer Support / Responsible Builder Policy review.
 
-Public source: *(set after GitHub publish — replace with repo URL)*  
-Privacy policy: [`PRIVACY.md`](PRIVACY.md) *(raw / blob URL on GitHub after publish)*  
+Public source: https://github.com/lilibo215/scalefind  
+Privacy policy: https://github.com/lilibo215/scalefind/blob/main/PRIVACY.md  
 Data policy: [`DATA-POLICY.md`](DATA-POLICY.md)  
 Security: [`SECURITY.md`](SECURITY.md)  
 Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
 ## One-sentence purpose
 
-**scalefind** is a **non-commercial**, **read-only**, **user-initiated** prototype that lets an operator search and view **publicly accessible** Reddit posts, comments, and subreddit metadata through the official Reddit API.
+**scalefind** is a **non-commercial**, **read-only**, **user-initiated**, **localhost-only** prototype that lets an operator search and view **publicly accessible** Reddit posts, comments, and subreddit metadata through the official Reddit API.
+
+## Deployment posture (default)
+
+| Constraint | Default |
+|------------|---------|
+| Host binding | **localhost / 127.0.0.1 only** — intended for the operator’s own machine |
+| Public internet exposure | **Not** the default; this prototype is not a hosted multi-tenant service |
+| Auth flow | **App-only (client credentials)** for read of public content |
+| Redirect URI / user OAuth callback | **Not used** — no interactive Reddit login or callback endpoint is part of this prototype’s purpose |
 
 ## What reviewers should verify in code
 
@@ -25,17 +34,22 @@ Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 | Short local retention + deletion | `DATA_RETENTION_HOURS` (default 24), `DELETE /reddit/data/{id}`, `POST /reddit/data/expire` |
 | No user profiling / no author enrichment | `DATA-POLICY.md`, `app/reddit/models.py` minimized fields |
 | No AI training / no data resale | stated in README + PRIVACY + this file |
+| Localhost-oriented operation | README quick start (`uvicorn` on localhost); UI and API documented as local |
 
 ## Use case (paste into Reddit ticket)
 
 **App name:** scalefind  
 
-**Commercial?** No — prototype / evaluation only. Not a paid product, not a data marketplace, not an ads or lead-gen system.
+**Commercial?** No — **non-commercial** prototype / evaluation only. Not a paid product, not a data marketplace, not an ads or lead-gen system.
 
-**Access type:** OAuth client credentials (app-only) for **read** of public content. No posting, voting, messaging, moderation, or private-message access.
+**Future commercial use:** If commercial use is ever contemplated, that would be a **separate** Reddit application under Reddit’s commercial / paid Data API process and **explicit written approval**. This repository and this ticket do **not** request commercial access.
+
+**Access type:** OAuth **client credentials (app-only)** for **read** of public content. No posting, voting, messaging, moderation, or private-message access. **No user OAuth redirect / callback flow** is required for this prototype.
+
+**Where it runs:** Default **localhost-only** on the operator’s machine. Not offered as a public SaaS in this submission.
 
 **What the app does:**
-1. Operator enters an explicit search query (optional subreddit filter) in a local UI or HTTP API.
+1. Operator enters an explicit search query (optional subreddit filter) in a local UI or HTTP API on localhost.
 2. App calls Reddit OAuth API for search / subreddit about / post / comments.
 3. Results are shown to the operator. Optionally cached in a **local SQLite** file with **24-hour** default expiry.
 4. Operator can delete cached rows by id; expired rows are purged on startup and via an expire endpoint.
@@ -49,19 +63,19 @@ Architecture: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - Training or fine-tuning AI / ML models on Reddit content
 - Inferring sensitive attributes about users
 - Matching Reddit identities to off-platform identifiers
+- Hosting a public multi-user service by default
+- Using a Redirect URI / authorization-code callback as part of normal operation
 
 **Data accessed (public only):**
 - Search listings (post id, title, body excerpt, subreddit, created time, permalink, score, comment count)
 - Subreddit about (name, title, public description, subscribers)
 - Single post + comments (depth/count limited; body excerpted)
 
-**Subreddit scope:** Restricted by `config/subreddits.yaml` allowlist when populated. Prototype ships with placeholder names; production use should list only communities needed for the stated research task.
+**Subreddit scope:** Restricted by `config/subreddits.yaml` allowlist when populated. Prototype ships with placeholder names; use should list only communities needed for the stated task.
 
 **Expected volume (prototype):** Low. Local interactive use. Default client budget ≈ **60 requests/minute** with backoff; expected real usage far below that (human-driven searches).
 
 **User-Agent pattern:** `scalefind/0.1 by <reddit_username>` (configured via `REDDIT_USER_AGENT`).
-
-**Redirect URI:** `http://localhost:8000/reddit/auth/callback` (local prototype; update if a public callback is ever added).
 
 **Retention / deletion:** Local cache default **24 hours**. Explicit delete endpoints. No permanent warehouse, CRM, vector DB, or training corpus.
 
@@ -75,12 +89,13 @@ We intend to comply with:
 
 Specifically:
 
-1. **Approval before use** — we will not call the Data API until Reddit grants access for this use case.
+1. **Approval before use** — we will not call the Data API until Reddit grants access for this non-commercial use case.
 2. **Transparency** — this repository and documentation describe the real purpose and scope.
-3. **No unapproved commercialization or AI training** — Reddit data is not sold, licensed, or used to train models.
-4. **No privacy violations** — no sensitive-attribute inference, no re-identification, no off-platform identity matching.
-5. **Respect rate limits** — client enforces local RPM + Reddit headers; no intentional circumvention.
-6. **Scope minimization** — only read endpoints needed for search/view; allowlist for subreddits.
+3. **No unapproved commercialization or AI training** — Reddit data is not sold, licensed, or used to train models under this prototype.
+4. **Separate path for commercial** — any future commercial product, paid offering, or commercialization of Reddit data would require a **new, separate** Reddit application and approval; it is out of scope for this submission.
+5. **No privacy violations** — no sensitive-attribute inference, no re-identification, no off-platform identity matching.
+6. **Respect rate limits** — client enforces local RPM + Reddit headers; no intentional circumvention.
+7. **Scope minimization** — only read endpoints needed for search/view; allowlist for subreddits; localhost-only default.
 
 ## How to run (for reviewers)
 
@@ -90,15 +105,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 # Reviewers: leave credentials empty to inspect UI + /health;
-# or use sandbox credentials Reddit provides after approval.
-uvicorn app.main:app --reload
+# or use credentials Reddit provides after approval.
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-- UI: http://localhost:8000  
-- Health: http://localhost:8000/health (`read_only: true`)  
-- OpenAPI: http://localhost:8000/docs  
+- UI: http://127.0.0.1:8000  
+- Health: http://127.0.0.1:8000/health (`read_only: true`)  
+- OpenAPI: http://127.0.0.1:8000/docs  
 - Tests: `pytest -q`
 
 ## Contact
 
-Use the GitHub repository Issues after publish, or the email provided in the Reddit Developer Support ticket.
+Use the GitHub repository Issues (https://github.com/lilibo215/scalefind/issues), or the email provided in the Reddit Developer Support ticket.

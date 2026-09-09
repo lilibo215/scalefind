@@ -1,8 +1,8 @@
 # scalefind
 
-Non-commercial, **read-only** Reddit API prototype (v0.1).
+Non-commercial, **read-only**, **localhost-only** Reddit API prototype (v0.1).
 
-An operator explicitly searches or looks up **public** Reddit content through the official API. Nothing runs in the background. Nothing is written back to Reddit.
+An operator on their own machine explicitly searches or looks up **public** Reddit content through the official API. Nothing runs in the background. Nothing is written back to Reddit.
 
 **Reddit reviewers:** see [REDDIT-REVIEW.md](REDDIT-REVIEW.md) first.  
 **Privacy:** [PRIVACY.md](PRIVACY.md) · **Data:** [DATA-POLICY.md](DATA-POLICY.md) · **Security:** [SECURITY.md](SECURITY.md)
@@ -11,18 +11,20 @@ An operator explicitly searches or looks up **public** Reddit content through th
 
 ## Features
 
-- OAuth client-credentials auth (env-based; fails closed if missing)
+- OAuth **client credentials (app-only)** auth — env-based; fails closed if missing
 - Public search, subreddit about, post, and comment retrieval
 - Comment depth / count limits
 - Local rate limiting + Reddit header awareness + capped backoff
 - Short-lived local SQLite cache (default **24h**) with explicit delete / expire
-- Single-page research UI at `/`
+- Single-page research UI at `/` (served on localhost)
 
 ## Non-goals
 
 | Not this | Why it matters |
 |----------|----------------|
-| Commercial product / data marketplace | No resale or licensing of Reddit data |
+| Commercial product / data marketplace | No resale or licensing of Reddit data under this prototype |
+| Public multi-tenant SaaS (default) | Default posture is **localhost-only** |
+| User OAuth / Redirect URI flow | App-only token; no interactive Reddit login callback is required |
 | Crawler / scheduler / monitor | Only user-initiated requests |
 | Write actions (post, vote, message, mod…) | Client allows GET/HEAD only; tests enforce it |
 | User profiling / identity enrichment | Minimized fields; no author history store |
@@ -31,14 +33,17 @@ An operator explicitly searches or looks up **public** Reddit content through th
 
 ## Compliance
 
-Intended use is only **after** Reddit grants API access for this use case, under the [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) and [Developer Terms](https://redditinc.com/policies/developer-terms).
+Intended use is only **after** Reddit grants API access for this **non-commercial** use case, under the [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) and [Developer Terms](https://redditinc.com/policies/developer-terms).
+
+**Commercial access is out of scope for this submission.** Any future commercial product, paid offering, or commercialization of Reddit data would require a **separate** Reddit application and Reddit’s commercial / written approval path — not an expansion of this prototype’s current request.
 
 Ticket-ready description, volume estimates, and a code checklist live in [REDDIT-REVIEW.md](REDDIT-REVIEW.md).
 
 ## Requirements
 
 - Python **3.11+**
-- Reddit OAuth app credentials (after approval)
+- Reddit OAuth app credentials (after non-commercial approval)
+- Local machine (default bind: `127.0.0.1`)
 
 ## Quick start
 
@@ -49,24 +54,25 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env`:
+Edit `.env` (app-only credentials; no Redirect URI required for this prototype):
 
 ```env
 REDDIT_CLIENT_ID=...
 REDDIT_CLIENT_SECRET=...
 REDDIT_USER_AGENT=scalefind/0.1 by your_reddit_username
-REDDIT_REDIRECT_URI=http://localhost:8000/reddit/auth/callback
 ```
 
+Bind to localhost only:
+
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 | URL | Purpose |
 |-----|---------|
-| http://localhost:8000 | Research UI |
-| http://localhost:8000/health | Liveness (`read_only: true`) |
-| http://localhost:8000/docs | OpenAPI |
+| http://127.0.0.1:8000 | Research UI |
+| http://127.0.0.1:8000/health | Liveness (`read_only: true`) |
+| http://127.0.0.1:8000/docs | OpenAPI |
 
 Without credentials, `/health` still works; Reddit endpoints return **503**.
 
@@ -77,7 +83,6 @@ Without credentials, `/health` still works; Reddit endpoints return **503**.
 | `REDDIT_CLIENT_ID` | _(empty)_ | Required for API calls |
 | `REDDIT_CLIENT_SECRET` | _(empty)_ | Required for API calls |
 | `REDDIT_USER_AGENT` | `scalefind/0.1` | Use a descriptive UA including your Reddit username |
-| `REDDIT_REDIRECT_URI` | `http://localhost:8000/reddit/auth/callback` | Local prototype |
 | `REDDIT_REQUEST_TIMEOUT_SECONDS` | `15` | HTTP timeout |
 | `REDDIT_MAX_RETRIES` | `3` | Hard-capped retries |
 | `REDDIT_RATE_LIMIT_REQUESTS_PER_MINUTE` | `60` | Local budget |
@@ -86,6 +91,8 @@ Without credentials, `/health` still works; Reddit endpoints return **503**.
 | `SUBREDDIT_ALLOWLIST_PATH` | `config/subreddits.yaml` | Allowed communities |
 
 Secrets stay in `.env` (gitignored). Never commit client secrets or tokens.
+
+This prototype uses **app-only** OAuth. A Redirect URI is **not** part of the documented setup or review scope.
 
 ## API
 
